@@ -1,0 +1,19 @@
+{
+    "version":"1",
+    "enrollment_no":"some-number",
+    "billing_api_key":"some-key",
+    "billing_api_endpoint":"https://consumption.azure.com/v2/enrollments/",
+    "billing_lag":"3",
+    "no_of_days":"1",
+    "mysql_server":"MY SQL SERVER NAME",
+    "mysql_server_fqdn":"FQDN for your MY SQL server",
+    "mysql_db":"billingdb",
+    "mysql_username":"username@servername",
+    "mysql_password":"your password",
+    "smtp":"your.smtp.server",
+    "smtp_user_name":"smtp.username",
+    "smtp_password":"smtp.password",
+    "smtp_port":"smtp port",
+    "email_from_address":"some email address",
+    "email_to_default_address":"some email address"
+}
