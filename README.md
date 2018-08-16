@@ -17,4 +17,6 @@ Application Components
   
   config.json : All config parameters including mySQL DB, SMTP & others
   
+  schema.sql : creates mysql tables and default records
+  
   Frequency : Daily configured as CRON jobs
