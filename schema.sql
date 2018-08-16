@@ -35,7 +35,6 @@ create table azure_usage (
         resourceGroup varchar(50)
 )
 
--- queries NOT TO BE RUN
 select count(*) from azure_usage
 
 select resourceGroup, sum(Cost) Costs from azure_usage group by resourceGroup order by Costs desc limit 10
@@ -54,19 +53,16 @@ select subscriptionName, sum(Cost) Costs from azure_usage group by SubscriptionN
 
 create table default_config (config_name varchar(100), config_value varchar(255))
 
--- default values
 insert into default_config values ('rg_default_quota', 100000)
 insert into default_config values ('rg_green_quota_threshold_percentage', 70)
 insert into default_config values ('rg_yellow_quota_threshold_percentage', 90)
 insert into default_config values ('rg_red_quota_threshold_percentage', 100)
 
--- rg wise limits table
 create table rg_config (rg_name varchar(200), rg_limit int, rg_email varchar(500))
 
--- default values
 insert rg_config values ('ACMEDIASHARE',100000,'ameetk@microsoft.com')
 
--- usage against thresholds NOT BE RUN
+-- usage against thresholds
 select azure_usage.Costs , azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
 case 
 when azure_usage.usagepercentage <= 70 then 'GREEN'
@@ -82,6 +78,7 @@ from
 azure_usage u, rg_config r
 where
 u.resourceGroup = r.rg_name
+and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
 
@@ -94,8 +91,8 @@ azure_usage u, default_config c, rg_config r
 where 
 c.config_name = 'rg_default_quota' 
 and r.rg_name != u.resourceGroup
+and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
 ) azure_usage
 order by usagepercentage desc
-

@@ -1,10 +1,9 @@
 {
-    "version":"1",
     "enrollment_no":"some-number",
     "billing_api_key":"some-key",
     "billing_api_endpoint":"https://consumption.azure.com/v2/enrollments/",
-    "billing_lag":"2",
-    "no_of_days":"0",
+    "billing_lag":"3",
+    "no_of_days":"1",
     "mysql_server":"MY SQL SERVER NAME",
     "mysql_server_fqdn":"FQDN for your MY SQL server",
     "mysql_db":"billingdb",
