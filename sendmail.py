@@ -1,4 +1,3 @@
-# release v1
 import smtplib
 import mysql.connector
 import json
@@ -6,6 +5,11 @@ from datetime import date, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import email.message
+import logging
+
+# set logging config
+logging.basicConfig(filename='azure-billing-log',filemode='a',format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',datefmt='%Y:%m:%d %H:%M:%S',level=logging.DEBUG)
+logging.info("loaded log config")
 
 # get all config settings
 with open('config.json','r') as file:
@@ -35,15 +39,21 @@ recepient = [config['email_to_default_address']]
 billing_lag = config['billing_lag']
 no_of_days = config['no_of_days']
 
+logging.info("loaded app config")
+
 # open smtp connection
 smtp = smtplib.SMTP(smtp_server + ':' + smtp_port)
 smtp.starttls()
 smtp.login(smtp_username,smtp_password)
 
+logging.info("logged in smtp")
+
 # open mysql connection
 conn = mysql.connector.connect(user=mysql_user,password=mysql_password,host=mysql_host,database=mysql_db)
 conn._connection_timeout = 600
 cursor = conn.cursor()
+
+logging.info("connected to mysql billingdb")
 
 # query to get usage against thresholds
 query = '''
@@ -62,6 +72,7 @@ from
 azure_usage u, rg_config r
 where
 u.resourceGroup = r.rg_name
+and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
 
@@ -74,6 +85,7 @@ azure_usage u, default_config c, rg_config r
 where 
 c.config_name = 'rg_default_quota' 
 and r.rg_name != u.resourceGroup
+and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
 ) azure_usage
@@ -83,6 +95,8 @@ order by usagepercentage desc
 # execute query
 cursor.execute(query)
 
+logging.info("ran query")
+
 # open smtp connection
 smtp = smtplib.SMTP(smtp_server + ':' + smtp_port)
 smtp.ehlo()
@@ -90,15 +104,19 @@ smtp.starttls()
 smtp.login(smtp_username,smtp_password)
 
 # create the email object & html message body
+text_message = ''
+html_message = ''
 message = email.message.Message()
 message.add_header('Content-Type','text/html')
 message['From'] = sender
 message['To'] = ','.join(recepient)
-
+month = date.today().strftime('%B')
+count = 1
 # loop in for all results
 for (Costs,rg,rg_limit,usagepercentage,email,flag) in cursor:
     
-    message['Subject'] = 'Your usage for resourceGroup {} for month {} is INR {} at is at {} % of your quota'.format(rg,str(date.today()),Costs,usagepercentage)
+    message['Subject'] = 'Your usage for resourceGroup {} for month {} is INR {} at is at {} % of your quota'.format(rg,month,Costs,usagepercentage)
+    #text_message = 'Your usage for month {} is INR {} at is at {} % of your quota'.format(str(date.today),Costs,usagepercentage)
     html_message = '''
     <html>
         <body>
@@ -108,10 +126,14 @@ for (Costs,rg,rg_limit,usagepercentage,email,flag) in cursor:
             </tr>
         </body>
     </html>
-    '''.format(flag,rg,str(date.today()),Costs,usagepercentage)
+    '''.format(flag,rg,month,Costs,usagepercentage)
 
     message.set_payload(html_message)
+    #print (message.as_string())
     smtp.sendmail(sender,recepient,message.as_string())
+    count = count + 1
+
+logging.info(str(count) + " mail(s) sent")
 
 # close smtp connection
 smtp.quit()

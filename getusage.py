@@ -1,10 +1,12 @@
-# release v1
 import requests
 import json
-import pydocumentdb.document_client as document_client
-import pydocumentdb.errors as errors
 import mysql.connector
 from datetime import date, timedelta
+import logging
+
+# set logging config
+logging.basicConfig(filename='azure-billing-log',filemode='a',format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',datefmt='%Y:%m:%d %H:%M:%S',level=logging.DEBUG)
+logging.info("loaded log config")
 
 # get all config settings
 with open('config.json','r') as file:
@@ -34,9 +36,13 @@ smtp_default_address = config['email_to_default_address']
 billing_lag = config['billing_lag']
 no_of_days = config['no_of_days']
 
+logging.info("loaded app config")
+
 # open mysql connection
 conn = mysql.connector.connect(user=mysql_user,password=mysql_password,host=mysql_host,database=mysql_db)
 cursor = conn.cursor()
+
+logging.info("connected to mysql billingdb")
 
 # insert usage data query
 insert_query = ("insert into azure_usage values (%(cost)s,%(accountId)s,%(productId)s,%(resourceLocationId)s,%(consumedServiceId)s,%(departmentId)s,%(accountOwnerEmail)s,%(accountName)s,%(serviceAdministratorId)s,%(subscriptionId)s,%(subscriptionGuid)s,%(subscriptionName)s,%(date)s,%(product)s,%(meterId)s,%(meterCategory)s,%(meterSubCategory)s,%(meterRegion)s,%(meterName)s,%(consumedQuantity)s,%(resourceRate)s,%(resourceLocation)s,%(consumedService)s,%(instanceId)s,%(serviceInfo1)s,%(serviceInfo2)s,%(additionalInfo)s,%(tags)s,%(storeServiceIdentifier)s,%(departmentName)s,%(costCenter)s,%(unitOfMeasure)s,%(resourceGroup)s)")
@@ -55,7 +61,9 @@ def writetodb(data):
 startTime = date.today() - timedelta(int(billing_lag))
 endTime = (startTime + timedelta(int(no_of_days))).strftime('%Y-%m-%d')
 startTime = startTime.strftime('%Y-%m-%d')
-print ('Starting download for ' + startTime + ' - ' + endTime)
+
+logging.info('starting usage download for ' + startTime + ' - ' + endTime)
+print ('starting usage download for ' + startTime + ' - ' + endTime)
 
 # build end point
 endpoint = billing_api_endpoint + enrollment_no + '/usagedetailsbycustomdate?startTime=' + startTime + '&endTime=' + endTime
@@ -92,8 +100,10 @@ if (response.status_code == 200):
         endpoint = usage['nextLink']
         conn.commit()
 
-    print ('Run Date :: ' + str(date.today()) + ' for ' + startTime + 'to ' + endTime + '.' + str(record_count) + ' records inserted')
+    logging.info('run Date :: ' + str(date.today()) + ' for ' + startTime + 'to ' + endTime + '.' + str(record_count) + ' records inserted')
+    print ('run Date :: ' + str(date.today()) + ' for ' + startTime + 'to ' + endTime + '.' + str(record_count) + ' records inserted')
 # if response not 200
 else:
+    logging.error(str(response.status_code) + ' : ' + response.text)
     print (str(response.status_code) + response.text)
 
