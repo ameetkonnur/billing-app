@@ -35,22 +35,7 @@ create table azure_usage (
         resourceGroup varchar(50)
 )
 
-select count(*) from azure_usage
-
-select resourceGroup, sum(Cost) Costs from azure_usage group by resourceGroup order by Costs desc limit 10
-
-create view top10usage as select resourceGroup, sum(Cost) Costs from azure_usage group by resourceGroup order by Costs desc limit 10
-
-select * from top10usage
-
-create view thismonthusage as select sum(Cost) as Costs from azure_usage
-
-select month(billing_date), year(billing_date) from azure_usage
-
-select count(distinct resourceGroup) from azure_usage group by subscriptionName
-
-select subscriptionName, sum(Cost) Costs from azure_usage group by SubscriptionName order by Costs desc
-
+-- create other config tables & default values
 create table default_config (config_name varchar(100), config_value varchar(255))
 
 insert into default_config values ('rg_default_quota', 100000)
@@ -58,9 +43,11 @@ insert into default_config values ('rg_green_quota_threshold_percentage', 70)
 insert into default_config values ('rg_yellow_quota_threshold_percentage', 90)
 insert into default_config values ('rg_red_quota_threshold_percentage', 100)
 
+-- create table for rg level limits & emailID for alerts
 create table rg_config (rg_name varchar(200), rg_limit int, rg_email varchar(500))
 
-insert rg_config values ('ACMEDIASHARE',100000,'ameetk@microsoft.com')
+-- insert value for each rg and email ID
+insert rg_config values ('Resource Group',100000,'email@email.com')
 
 -- usage against thresholds
 select azure_usage.Costs , azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
@@ -85,7 +72,7 @@ u.resourceGroup
 UNION
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'ameetk@microsoft.com' email
+sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'email@email.com' email
 from 
 azure_usage u, default_config c, rg_config r
 where 
@@ -96,3 +83,20 @@ group by
 u.resourceGroup
 ) azure_usage
 order by usagepercentage desc
+
+-- optional elements not currently used
+select count(*) from azure_usage
+
+select resourceGroup, sum(Cost) Costs from azure_usage group by resourceGroup order by Costs desc limit 10
+
+create view top10usage as select resourceGroup, sum(Cost) Costs from azure_usage group by resourceGroup order by Costs desc limit 10
+
+select * from top10usage
+
+create view thismonthusage as select sum(Cost) as Costs from azure_usage
+
+select month(billing_date), year(billing_date) from azure_usage
+
+select count(distinct resourceGroup) from azure_usage group by subscriptionName
+
+select subscriptionName, sum(Cost) Costs from azure_usage group by SubscriptionName order by Costs desc
