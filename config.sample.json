@@ -14,5 +14,6 @@
     "smtp_password":"smtp.password",
     "smtp_port":"smtp port",
     "email_from_address":"some email address",
-    "email_to_default_address":"some email address"
+    "email_to_default_address":"some email address",
+    "exclude-subscriptions":[]
 }

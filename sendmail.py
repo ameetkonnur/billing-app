@@ -1,3 +1,5 @@
+# handled multiple email ID's
+# added code for excluding subscriptions & email cosmetic changes
 import smtplib
 import mysql.connector
 import json
@@ -33,11 +35,14 @@ smtp_username = config['smtp_user_name']
 smtp_password = config['smtp_password']
 smtp_port = config['smtp_port']
 sender = config['email_from_address']
-recepient = [config['email_to_default_address']]
+recepient = config['email_to_default_address']
 
 # billing pull delay and no of days data to be pulled
 billing_lag = config['billing_lag']
 no_of_days = config['no_of_days']
+
+# load subscription exclusion
+exclude_subscriptions = config['exclude-subscriptions']
 
 logging.info("loaded app config")
 
@@ -57,7 +62,7 @@ logging.info("connected to mysql billingdb")
 
 # query to get usage against thresholds
 query = '''
-select azure_usage.Costs , azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
+select azure_usage.Costs ,azure_usage.sn, azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
 case 
 when azure_usage.usagepercentage <= 70 then 'GREEN'
 when azure_usage.usagepercentage > 70 and usagepercentage <= 90 then 'YELLOW'
@@ -67,7 +72,7 @@ from
 (
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email email
 from 
 azure_usage u, rg_config r
 where
@@ -79,12 +84,12 @@ u.resourceGroup
 UNION
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'ameetk@microsoft.com' email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' email
 from 
-azure_usage u, default_config c, rg_config r
+azure_usage u, default_config c
 where 
-c.config_name = 'rg_default_quota' 
-and r.rg_name != u.resourceGroup
+u.resourceGroup not in (select rg_name from rg_config)
+and c.config_name = 'rg_default_quota' 
 and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
@@ -104,34 +109,46 @@ smtp.starttls()
 smtp.login(smtp_username,smtp_password)
 
 # create the email object & html message body
-text_message = ''
-html_message = ''
 message = email.message.Message()
 message.add_header('Content-Type','text/html')
 message['From'] = sender
-message['To'] = ','.join(recepient)
+#message['To'] = ','.join(recepient)
 month = date.today().strftime('%B')
 count = 1
 # loop in for all results
-for (Costs,rg,rg_limit,usagepercentage,email,flag) in cursor:
+for (Costs,sn,rg,rg_limit,usagepercentage,email,flag) in cursor:
     
-    message['Subject'] = 'Your usage for resourceGroup {} for month {} is INR {} at is at {} % of your quota'.format(rg,month,Costs,usagepercentage)
-    #text_message = 'Your usage for month {} is INR {} at is at {} % of your quota'.format(str(date.today),Costs,usagepercentage)
-    html_message = '''
-    <html>
-        <body>
-            <tr>
-                <td bgcolor='{}'>  </td>
-                <td> Your usage for resourceGroup <b>{}</b> for month {} is INR <b>{}</b> at is at <b>{}</b> % of your quota </td>
-            </tr>
-        </body>
-    </html>
-    '''.format(flag,rg,month,Costs,usagepercentage)
+    if sn in exclude_subscriptions:
+        logging.info ('Skipped ' + rg + ' for subscription ' + sn)
+    else:
+        if email == 'default':
+            message['To'] = ','.join(recepient)
+        else:
+            message['To'] = ','.join([email])
+            recepient = email
+        
+        message['Subject'] = 'Your usage for resourceGroup {} for month {} is INR {} at is at {} % of your quota'.format(rg,month,Costs,usagepercentage)
+        #text_message = 'Your usage for month {} is INR {} at is at {} % of your quota'.format(str(date.today),Costs,usagepercentage)
+        html_message = '''
+        <html>
+            <body>
+                <table>
+                    <tr>
+                        <td colspan='2'> Subscription Name : <b>{}</b></td>
+                    </tr>
+                    <tr>
+                        <td bgcolor='{}'>    </td>
+                        <td> Your usage for resourceGroup <b>{}</b> for the month of {} is INR <b>{}</b> at is at <b>{}</b> % of your quota. </td>
+                    </tr>
+                </table>
+            </body>
+        </html>
+        '''.format(sn,flag,rg,month,Costs,usagepercentage)
 
-    message.set_payload(html_message)
-    #print (message.as_string())
-    smtp.sendmail(sender,recepient,message.as_string())
-    count = count + 1
+        message.set_payload(html_message)
+        print (html_message)
+        smtp.sendmail(sender,recepient.split(','),message.as_string())
+        count = count + 1
 
 logging.info(str(count) + " mail(s) sent")
 
