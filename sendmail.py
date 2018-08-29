@@ -46,13 +46,6 @@ exclude_subscriptions = config['exclude-subscriptions']
 
 logging.info("loaded app config")
 
-# open smtp connection
-smtp = smtplib.SMTP(smtp_server + ':' + smtp_port)
-smtp.starttls()
-smtp.login(smtp_username,smtp_password)
-
-logging.info("logged in smtp")
-
 # open mysql connection
 conn = mysql.connector.connect(user=mysql_user,password=mysql_password,host=mysql_host,database=mysql_db)
 conn._connection_timeout = 600
@@ -62,7 +55,7 @@ logging.info("connected to mysql billingdb")
 
 # query to get usage against thresholds
 query = '''
-select azure_usage.Costs ,azure_usage.sn, azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
+select azure_usage.Costs ,azure_usage.sn, azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, emailId,
 case 
 when azure_usage.usagepercentage <= 70 then 'GREEN'
 when azure_usage.usagepercentage > 70 and usagepercentage <= 90 then 'YELLOW'
@@ -72,7 +65,7 @@ from
 (
 
 select 
-sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email emailId
 from 
 azure_usage u, rg_config r
 where
@@ -84,7 +77,7 @@ u.resourceGroup
 UNION
 
 select 
-sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' emailId
 from 
 azure_usage u, default_config c
 where 
@@ -108,24 +101,27 @@ smtp.ehlo()
 smtp.starttls()
 smtp.login(smtp_username,smtp_password)
 
-# create the email object & html message body
-message = email.message.Message()
-message.add_header('Content-Type','text/html')
-message['From'] = sender
-#message['To'] = ','.join(recepient)
+# set variable values
 month = date.today().strftime('%B')
-count = 1
+count = 0
+
 # loop in for all results
-for (Costs,sn,rg,rg_limit,usagepercentage,email,flag) in cursor:
+for (Costs,sn,rg,rg_limit,usagepercentage,emailId,flag) in cursor:
     
     if sn in exclude_subscriptions:
         logging.info ('Skipped ' + rg + ' for subscription ' + sn)
     else:
-        if email == 'default':
-            message['To'] = ','.join(recepient)
+        # create the email object & html message body
+        message = email.message.Message()
+        message.add_header('Content-Type','text/html')
+        message['From'] = sender
+
+        if emailId == 'default':
+            recepient = config['email_to_default_address']
+            message['To'] = recepient
         else:
-            message['To'] = ','.join([email])
-            recepient = email
+            recepient = emailId
+            message['To'] = recepient
         
         message['Subject'] = 'Your usage for resourceGroup {} for month {} is INR {} at is at {} % of your quota'.format(rg,month,Costs,usagepercentage)
         #text_message = 'Your usage for month {} is INR {} at is at {} % of your quota'.format(str(date.today),Costs,usagepercentage)
@@ -146,11 +142,12 @@ for (Costs,sn,rg,rg_limit,usagepercentage,email,flag) in cursor:
         '''.format(sn,flag,rg,month,Costs,usagepercentage)
 
         message.set_payload(html_message)
-        print (html_message)
+        #print (html_message)
         smtp.sendmail(sender,recepient.split(','),message.as_string())
         count = count + 1
 
 logging.info(str(count) + " mail(s) sent")
+print (str(count) + " mail(s) sent")
 
 # close smtp connection
 smtp.quit()

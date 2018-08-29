@@ -72,12 +72,12 @@ u.resourceGroup
 UNION
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'email@email.com' email
+sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' email
 from 
-azure_usage u, default_config c, rg_config r
-where 
-c.config_name = 'rg_default_quota' 
-and r.rg_name != u.resourceGroup
+azure_usage u, default_config c
+where
+u.resourceGroup not in (select rg_name from rg_config) 
+and c.config_name = 'rg_default_quota' 
 and month(u.billing_date) = month(sysdate())
 group by 
 u.resourceGroup
