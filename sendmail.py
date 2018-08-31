@@ -55,39 +55,7 @@ logging.info("connected to mysql billingdb")
 
 # query to get usage against thresholds
 query = '''
-select azure_usage.Costs ,azure_usage.sn, azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, emailId,
-case 
-when azure_usage.usagepercentage <= 70 then 'GREEN'
-when azure_usage.usagepercentage > 70 and usagepercentage <= 90 then 'YELLOW'
-when azure_usage.usagepercentage > 90 then 'RED'
-end as flag
-from 
-(
-
-select 
-sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email emailId
-from 
-azure_usage u, rg_config r
-where
-u.resourceGroup = r.rg_name
-and month(u.billing_date) = month(sysdate())
-group by 
-u.resourceGroup
-
-UNION
-
-select 
-sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' emailId
-from 
-azure_usage u, default_config c
-where 
-u.resourceGroup not in (select rg_name from rg_config)
-and c.config_name = 'rg_default_quota' 
-and month(u.billing_date) = month(sysdate())
-group by 
-u.resourceGroup
-) azure_usage
-order by usagepercentage desc
+select * from usage_against_thresholds
 '''
 
 # execute query
@@ -102,7 +70,7 @@ smtp.starttls()
 smtp.login(smtp_username,smtp_password)
 
 # set variable values
-month = date.today().strftime('%B')
+month = (date.today() - timedelta(int(billing_lag))).strftime('%B')
 count = 0
 
 # loop in for all results
