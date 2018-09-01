@@ -50,7 +50,8 @@ create table rg_config (rg_name varchar(200), rg_limit int, rg_email varchar(500
 insert rg_config values ('Resource Group',100000,'email@email.com')
 
 -- usage against thresholds
-select azure_usage.Costs , azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, email,
+create view usage_against_thresholds as 
+(select azure_usage.Costs ,azure_usage.sn, azure_usage.rg, azure_usage.rg_limit, azure_usage.usagepercentage, emailId,
 case 
 when azure_usage.usagepercentage <= 70 then 'GREEN'
 when azure_usage.usagepercentage > 70 and usagepercentage <= 90 then 'YELLOW'
@@ -60,29 +61,29 @@ from
 (
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, r.rg_limit rg_limit , (sum(Cost) / r.rg_limit * 100) usagepercentage, r.rg_email emailId
 from 
 azure_usage u, rg_config r
 where
 u.resourceGroup = r.rg_name
-and month(u.billing_date) = month(sysdate())
+and month(u.billing_date) = month(sysdate()-2)
 group by 
 u.resourceGroup
 
 UNION
 
 select 
-sum(u.Cost) Costs, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' email
+sum(u.Cost) Costs, u.subscriptionName sn, u.resourceGroup rg, c.config_value rg_limit , (sum(u.Cost) / c.config_value * 100) usagepercentage, 'default' emailId
 from 
 azure_usage u, default_config c
-where
-u.resourceGroup not in (select rg_name from rg_config) 
+where 
+u.resourceGroup not in (select rg_name from rg_config)
 and c.config_name = 'rg_default_quota' 
-and month(u.billing_date) = month(sysdate())
+and month(u.billing_date) = month(sysdate()-2)
 group by 
 u.resourceGroup
 ) azure_usage
-order by usagepercentage desc
+order by usagepercentage desc)
 
 -- optional elements not currently used
 select count(*) from azure_usage
