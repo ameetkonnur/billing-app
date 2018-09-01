@@ -30,3 +30,8 @@ Application Components
   "billing_lag":"15",  --> for 15 days historical data update this to 15.
   
   "no_of_days":"14", --> add 14 days to above date
+
+update : Docker Container Image available for the same along with reporting built on Apache Superset.
+Link : https://hub.docker.com/r/ameetk/azure-billing-alerts-app/
+Command : docker pull ameetk/azure-billing-alerts-app
+Command to run : docker run -it -p 8088:8088 ameetk/azure-billing-alerts-app
