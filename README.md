@@ -1,4 +1,4 @@
-# billing-app
+# azure dashboard app (billing and resource summary)
 This application gives an option to configure monthly limits at a resourceGroup Level and have alerts set to specific emailID's.
 
 It uses the publicly available billing API for Azure Usage (https://docs.microsoft.com/en-us/rest/api/billing/enterprise/billing-enterprise-api-usage-detail). 
