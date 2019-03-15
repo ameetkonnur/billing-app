@@ -18,7 +18,5 @@ RUN cd /
 RUN cd code
 RUN git init
 RUN git pull https://github.com/ameetkonnur/billing-app
-COPY init_container.sh /opt/startup
-RUN chmod 755 /opt/startup/init_container.sh
-RUN superset init
-ENTRYPOINT ["/opt/startup/init_container.sh"]
+RUN chmod 755 init_container.sh
+ENTRYPOINT ["/code/init_container.sh"]

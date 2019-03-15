@@ -1,4 +1,6 @@
 #!/bin/bash
 service ssh start
-superset runserver -d
 /usr/sbin/sshd
+superset init
+superset runserver -d
+
