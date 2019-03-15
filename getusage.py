@@ -1,3 +1,4 @@
+# release v1
 import requests
 import json
 import mysql.connector
@@ -100,8 +101,8 @@ if (response.status_code == 200):
         endpoint = usage['nextLink']
         conn.commit()
 
-    logging.info('run Date :: ' + str(date.today()) + ' for ' + startTime + 'to ' + endTime + '.' + str(record_count) + ' records inserted')
-    print ('run Date :: ' + str(date.today()) + ' for ' + startTime + 'to ' + endTime + '.' + str(record_count) + ' records inserted')
+    logging.info('run Date :: ' + str(date.today()) + ' for ' + startTime + ' to ' + endTime + '.' + str(record_count) + ' records inserted')
+    print ('run Date :: ' + str(date.today()) + ' for ' + startTime + ' to ' + endTime + '.' + str(record_count) + ' records inserted')
 # if response not 200
 else:
     logging.error(str(response.status_code) + ' : ' + response.text)

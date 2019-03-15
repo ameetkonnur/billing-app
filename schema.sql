@@ -66,7 +66,7 @@ from
 azure_usage u, rg_config r
 where
 u.resourceGroup = r.rg_name
-and month(u.billing_date) = month(sysdate()-2)
+and month(u.billing_date) = month(date_sub(sysdate(), INTERVAL 2 DAY))
 group by 
 u.resourceGroup
 
@@ -79,11 +79,15 @@ azure_usage u, default_config c
 where 
 u.resourceGroup not in (select rg_name from rg_config)
 and c.config_name = 'rg_default_quota' 
-and month(u.billing_date) = month(sysdate()-2)
+and month(u.billing_date) = month(date_sub(sysdate(), INTERVAL 2 DAY))
 group by 
 u.resourceGroup
 ) azure_usage
 order by usagepercentage desc)
+
+-- indexes
+
+alter table azure_usage add index (billing_date)
 
 -- optional elements not currently used
 select count(*) from azure_usage

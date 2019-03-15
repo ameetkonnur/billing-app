@@ -1,4 +1,5 @@
 {
+    "version":"1",
     "enrollment_no":"some-number",
     "billing_api_key":"some-key",
     "billing_api_endpoint":"https://consumption.azure.com/v2/enrollments/",
@@ -14,6 +15,5 @@
     "smtp_password":"smtp.password",
     "smtp_port":"smtp port",
     "email_from_address":"some email address",
-    "email_to_default_address":"some email address",
-    "exclude-subscriptions":[]
+    "email_to_default_address":"some email address"
 }
