@@ -15,5 +15,10 @@
     "smtp_password":"smtp.password",
     "smtp_port":"smtp port",
     "email_from_address":"some email address",
-    "email_to_default_address":"some email address"
+    "email_to_default_address":"some email address",
+    "exclude-subscriptions":[],
+    "client_secret" : "<client secret from app registration in AAD>",
+    "tenant_id" : "AAD Tenant ID",
+    "client_id" : "<client id from app registration in AAD>",
+    "include_subscription_id" : []
 }
