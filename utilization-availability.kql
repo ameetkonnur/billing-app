@@ -1,0 +1,41 @@
+let t1 = Perf
+
+| where CounterName == '% Processor Time' 
+
+| where TimeGenerated > now() - 12h
+
+| project Computer , CPU=CounterValue
+
+| join kind = inner (
+
+    Perf
+
+    | where CounterName == '% Used Memory' or CounterName == '% Committed Bytes In Use'
+
+    | where TimeGenerated > now() - 12h
+
+    | project Computer, Memory=CounterValue
+
+  ) on Computer
+
+| summarize CPU=round(avg(CPU),0), Memory=round(avg(Memory),0) by Computer;
+
+let Metrics = materialize(t1);
+
+let t2 = Heartbeat
+
+| where TimeGenerated > ago(12h)
+
+| summarize heartbeatPerHour = count() by bin_at(TimeGenerated, 1h, ago(12h)), Computer, ResourceGroup
+
+| extend availablePerHour = iff(heartbeatPerHour > 0, true, false)
+
+| summarize totalAvailableHours = countif(availablePerHour == true) by Computer, ResourceGroup
+
+| extend availabilityRate = round((totalAvailableHours*100.0/12),0);
+
+let Uptime = materialize(t2);
+
+Uptime
+
+| join kind = inner Metrics on $left.Computer == $right.Computer
